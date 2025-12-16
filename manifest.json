@@ -4,10 +4,28 @@
   "version": "0.1.0",
   "description": "为 ChatGPT 等长对话页面提供目录/快速跳转/搜索。",
   "permissions": ["storage"],
-  "host_permissions": ["https://chatgpt.com/*", "https://chat.openai.com/*", "https://chat.deepseek.com/*"],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://chat.deepseek.com/*",
+    "https://tongyi.aliyun.com/*",
+    "https://qianwen.aliyun.com/*",
+    "https://www.tongyi.com/*",
+    "https://www.qianwen.com/*",
+    "https://www.doubao.com/*"
+  ],
   "content_scripts": [
     {
-      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*", "https://chat.deepseek.com/*"],
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://chat.deepseek.com/*",
+        "https://tongyi.aliyun.com/*",
+        "https://qianwen.aliyun.com/*",
+        "https://www.tongyi.com/*",
+        "https://www.qianwen.com/*",
+        "https://www.doubao.com/*"
+      ],
       "js": ["content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"

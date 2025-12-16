@@ -55,7 +55,37 @@
     if (el.closest?.(`#${EXT_NS}-root`)) return false;
     if (isInsideNonConversationArea(el)) return false;
     const t = normalizeText(el.textContent || "");
-    if (t.length < 10) return false;
+    // Allow very short messages for DeepSeek (e.g. "飞机", "玻璃") when the wrapper clearly indicates a message.
+    if (t.length < 10) {
+      try {
+        if (
+          site?.id === "deepseek" &&
+          (el.matches?.("div._9663006[data-um-id], div._4f9bf79") || el.querySelector?.("div.ds-message")) &&
+          t.length >= 1
+        ) {
+          return true;
+        }
+        if (
+          site?.id === "tongyi" &&
+          (el.matches?.("div[class*='questionItem-'], div[class*='answerItem-']") ||
+            el.closest?.("div[class*='questionItem-'], div[class*='answerItem-']")) &&
+          t.length >= 1
+        ) {
+          return true;
+        }
+        if (
+          site?.id === "doubao" &&
+          (el.matches?.("[data-testid='send_message'], [data-testid='receive_message']") ||
+            el.closest?.("[data-testid='send_message'], [data-testid='receive_message']")) &&
+          t.length >= 1
+        ) {
+          return true;
+        }
+      } catch {
+        // ignore
+      }
+      return false;
+    }
     if (t.length > 200000) return false;
     return true;
   }
@@ -131,29 +161,41 @@
     id: "deepseek",
     name: "DeepSeek",
     conversationRoot: () => {
+      // Observed structure: message list wrapper
+      const list = document.querySelector("div.dad65929");
+      if (list) return /** @type {Element} */ (list);
       const main = document.querySelector("main");
-      if (main) return main;
+      if (main) return /** @type {Element} */ (main);
       const app = document.querySelector("#app") || document.querySelector("[id*='app']");
       return /** @type {Element} */ (app || document.body);
     },
     messageElements: () => {
       const root = deepseekStrategy.conversationRoot();
-      const selectors = [
-        "[data-message-role], [data-author], [data-role*='message']",
-        "[class*='message-item'], [class*='messageItem']",
-        "[class*='chat-message'], [class*='chatMessage']",
-        "article, li, section"
-      ];
-      for (const sel of selectors) {
-        const found = Array.from(root.querySelectorAll(sel));
-        const candidates = filterToLeafCandidates(found);
-        if (candidates.length >= 4) return candidates.slice(0, 600);
+
+      // Prefer stable wrappers from sample:
+      // - user:      div._9663006[data-um-id]
+      // - assistant: div._4f9bf79... (sometimes with extra classes like d7dc56a8)
+      let primary = [];
+      try {
+        primary = Array.from(root.querySelectorAll(":scope > div._9663006[data-um-id], :scope > div._4f9bf79"));
+      } catch {
+        // Some engines may not support :scope in this context; fall back
+        primary = Array.from(root.querySelectorAll("div._9663006[data-um-id], div._4f9bf79"));
       }
-      // last resort: message-ish blocks
-      const blocks = Array.from(root.querySelectorAll("div")).slice(0, 800);
-      return filterToLeafCandidates(blocks).slice(0, 400);
+      const primaryFiltered = primary.filter(looksLikeMessageEl);
+      if (primaryFiltered.length >= 2) return primaryFiltered.slice(0, 1200);
+
+      // Fallback: find by inner markers but keep leaf nodes
+      const fallback = Array.from(
+        root.querySelectorAll("div._9663006[data-um-id], div._4f9bf79, div.ds-message, div.ds-markdown, div.md-code-block")
+      );
+      return filterToLeafCandidates(fallback).slice(0, 800);
     },
     roleForMessage: (el) => {
+      // Strong signals from sample DOM
+      if (el.matches?.("div._9663006[data-um-id], [data-um-id]")) return "user";
+      if (el.matches?.("div._4f9bf79") || el.querySelector?.(".ds-markdown, .md-code-block")) return "assistant";
+
       const attr =
         (el.getAttribute?.("data-message-role") ||
           el.getAttribute?.("data-role") ||
@@ -165,6 +207,68 @@
       if (attr === "assistant" || attr === "bot" || attr === "ai") return "assistant";
       const near = el.closest?.("[data-message-role],[data-role],[data-author],[class*='message'],[class*='chat']") || el;
       return detectRoleByTextHints(near);
+    }
+  };
+
+  /** @type {SiteStrategy} */
+  const tongyiStrategy = {
+    id: "tongyi",
+    name: "Tongyi Qianwen",
+    conversationRoot: () => {
+      // Observed in selector: ...scrollWrapper-LOelOS...
+      const scroller = document.querySelector("div[class*='scrollWrapper-']");
+      if (scroller) return /** @type {Element} */ (scroller);
+      const main = document.querySelector("main");
+      return /** @type {Element} */ (main || document.body);
+    },
+    messageElements: () => {
+      const root = tongyiStrategy.conversationRoot();
+      const nodes = Array.from(root.querySelectorAll("div[class*='questionItem-'], div[class*='answerItem-']"));
+      // Prefer wrappers; allow short text (we'll relax filter in looksLikeMessageEl for tongyi)
+      const filtered = filterToLeafCandidates(nodes);
+      if (filtered.length >= 2) return filtered.slice(0, 1200);
+      return filtered;
+    },
+    roleForMessage: (el) => {
+      const cls = (el.className || "").toString();
+      if (cls.includes("questionItem-")) return "user";
+      if (cls.includes("answerItem-")) return "assistant";
+      const q = el.closest?.("div[class*='questionItem-']");
+      if (q) return "user";
+      const a = el.closest?.("div[class*='answerItem-']");
+      if (a) return "assistant";
+      return detectRoleByTextHints(el);
+    }
+  };
+
+  /** @type {SiteStrategy} */
+  const doubaoStrategy = {
+    id: "doubao",
+    name: "Doubao",
+    conversationRoot: () => {
+      // Observed container in selector: ...scroll-view-... container-... reverse-...
+      const scroller = document.querySelector("div[class*='scroll-view-']");
+      if (scroller) return /** @type {Element} */ (scroller);
+      const main = document.querySelector("main");
+      return /** @type {Element} */ (main || document.body);
+    },
+    messageElements: () => {
+      const root = doubaoStrategy.conversationRoot();
+      const nodes = Array.from(root.querySelectorAll("[data-testid='send_message'], [data-testid='receive_message']"));
+      // These nodes are already message wrappers; keep them
+      const filtered = filterToLeafCandidates(nodes);
+      if (filtered.length >= 2) return filtered.slice(0, 1500);
+      return filtered;
+    },
+    roleForMessage: (el) => {
+      const tid = (el.getAttribute?.("data-testid") || "").toString();
+      if (tid === "send_message") return "user";
+      if (tid === "receive_message") return "assistant";
+      const send = el.closest?.("[data-testid='send_message']");
+      if (send) return "user";
+      const recv = el.closest?.("[data-testid='receive_message']");
+      if (recv) return "assistant";
+      return detectRoleByTextHints(el);
     }
   };
 
@@ -194,6 +298,14 @@
   function getSiteStrategy() {
     const host = (location.host || "").toLowerCase();
     if (host === "chat.deepseek.com") return deepseekStrategy;
+    if (
+      host === "tongyi.aliyun.com" ||
+      host === "qianwen.aliyun.com" ||
+      host === "www.tongyi.com" ||
+      host === "www.qianwen.com"
+    )
+      return tongyiStrategy;
+    if (host === "www.doubao.com") return doubaoStrategy;
     if (host === "chatgpt.com" || host === "chat.openai.com") return chatgptStrategy;
     return genericStrategy;
   }
@@ -261,19 +373,75 @@
       .trim();
   }
 
+  function stripLeadingRolePrefixes(s) {
+    let t = (s || "").trim();
+    // Common UI prefixes across chat UIs (CN + EN). Keep conservative to avoid stripping real content.
+    t = t.replace(
+      /^(?:你说|我说|用户说|助手说|ChatGPT说|ChatGPT 说|Assistant says|Assistant|User says|User|You said|You|System)\s*[:：]\s*/i,
+      ""
+    );
+    return t.trim();
+  }
+
   function pickPreviewFromText(text) {
-    const t = normalizeText(text);
+    const t = stripLeadingRolePrefixes(normalizeText(text));
     if (!t) return "";
     // Prefer first "sentence-ish" chunk
     return t.length > 90 ? t.slice(0, 90) + "…" : t;
   }
 
   function buildSearchTextFromRaw(rawText) {
-    const t = normalizeText(rawText);
+    const t = stripLeadingRolePrefixes(normalizeText(rawText));
     if (!t) return "";
     if (state.settings.searchScope === "full") return t;
     const n = state.settings.searchScope === "prefix" ? clamp(state.settings.prefixLength || 0, 100, 20000) : 90;
     return t.length > n ? t.slice(0, n) : t;
+  }
+
+  function extractRawTextForTurn(el, role) {
+    // Site-specific extraction to avoid toolbar/button text pollution.
+    try {
+      if (site?.id === "tongyi") {
+        const q = el.matches?.("div[class*='questionItem-']") ? el : el.closest?.("div[class*='questionItem-']");
+        const a = el.matches?.("div[class*='answerItem-']") ? el : el.closest?.("div[class*='answerItem-']");
+        if (role === "user" && q) {
+          return q.querySelector?.("div.bubble-uo23is")?.textContent || q.textContent || "";
+        }
+        if (role === "assistant" && a) {
+          return (
+            a.querySelector?.("div.tongyi-markdown")?.textContent ||
+            a.querySelector?.("div.contentBox-KuohQu")?.textContent ||
+            a.textContent ||
+            ""
+          );
+        }
+      }
+      if (site?.id === "deepseek") {
+        const userWrap = el.matches?.("div._9663006[data-um-id]") ? el : el.closest?.("div._9663006[data-um-id]");
+        if (role === "user" && userWrap) {
+          return userWrap.querySelector?.("div.fbb737a4")?.textContent || userWrap.textContent || "";
+        }
+      }
+      if (site?.id === "doubao") {
+        const msg = el.matches?.("[data-testid='send_message'], [data-testid='receive_message']")
+          ? el
+          : el.closest?.("[data-testid='send_message'], [data-testid='receive_message']");
+        if (msg) {
+          const text = msg.querySelector?.("[data-testid='message_text_content']")?.textContent?.trim();
+          if (text) return text;
+          // Image / rich content fallback: count images
+          const imgContent = msg.querySelector?.("[data-testid='message_image_content']");
+          if (imgContent) {
+            const n = imgContent.querySelectorAll("img").length;
+            return n > 0 ? `图片（${n} 张）` : "图片";
+          }
+          return msg.textContent || "";
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return el.textContent || "";
   }
 
   function elHasCode(el) {
@@ -377,7 +545,7 @@
       // Avoid capturing our own UI
       if (el.closest?.(`#${EXT_NS}-root`)) continue;
       const role = detectRoleForMessageEl(el);
-      const raw = el.textContent || "";
+      const raw = extractRawTextForTurn(el, role);
       const preview = pickPreviewFromText(raw);
       if (!preview) continue;
       const searchText = buildSearchTextFromRaw(raw);
@@ -490,7 +658,7 @@
     search.className = "co-input";
     search.id = `${EXT_NS}-search`;
     search.type = "search";
-    search.placeholder = "搜索（匹配提问/回答预览）";
+    search.placeholder = "搜索";
 
     row1.appendChild(search);
 
@@ -581,6 +749,22 @@
         setOpen(false, true);
       }
     });
+  }
+
+  function updateSearchPlaceholder() {
+    const input = /** @type {HTMLInputElement|null} */ (document.getElementById(`${EXT_NS}-search`));
+    if (!input) return;
+    const scope = state.settings.searchScope;
+    if (scope === "full") {
+      input.placeholder = "搜索（全文·实验）";
+      return;
+    }
+    if (scope === "prefix") {
+      const n = clamp(state.settings.prefixLength || 0, 100, 20000);
+      input.placeholder = `搜索（前 ${n} 字）`;
+      return;
+    }
+    input.placeholder = "搜索（预览）";
   }
 
   function setOpen(open, persist) {
@@ -687,6 +871,8 @@
       const div = document.createElement("div");
       div.className = "co-item";
       div.setAttribute("data-id", it.id);
+      div.setAttribute("data-kind", it.kind);
+      div.setAttribute("data-role", it.kind === "turn" ? it.role : "pair");
       div.setAttribute("data-active", it.index === state.activeIndex ? "true" : "false");
 
       const top = document.createElement("div");
@@ -849,12 +1035,14 @@
 
     setWidth(clamp(state.settings.width, 260, 520));
     setOpen(!!state.settings.openByDefault, false);
+    updateSearchPlaceholder();
 
     // Apply changes live when user saves options (no refresh needed).
     try {
       chrome.storage?.onChanged?.addListener((changes, area) => {
         if (area !== "sync") return;
         let needRebuild = false;
+        let needPlaceholder = false;
         if (changes.width && typeof changes.width.newValue === "number") {
           state.settings.width = changes.width.newValue;
           setWidth(clamp(state.settings.width, 260, 520));
@@ -869,11 +1057,14 @@
         if (changes.searchScope && (changes.searchScope.newValue === "preview" || changes.searchScope.newValue === "prefix" || changes.searchScope.newValue === "full")) {
           state.settings.searchScope = changes.searchScope.newValue;
           needRebuild = true;
+          needPlaceholder = true;
         }
         if (changes.prefixLength && typeof changes.prefixLength.newValue === "number") {
           state.settings.prefixLength = changes.prefixLength.newValue;
           if (state.settings.searchScope === "prefix") needRebuild = true;
+          if (state.settings.searchScope === "prefix") needPlaceholder = true;
         }
+        if (needPlaceholder) updateSearchPlaceholder();
         if (needRebuild) scheduleRebuild(0);
       });
     } catch {
