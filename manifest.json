@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "ChatOutline",
+  "version": "0.1.0",
+  "description": "为 ChatGPT 等长对话页面提供目录/快速跳转/搜索。",
+  "permissions": ["storage"],
+  "host_permissions": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options.html",
+  "action": {
+    "default_title": "ChatOutline"
+  }
+}
+
+
