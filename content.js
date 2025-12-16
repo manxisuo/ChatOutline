@@ -23,6 +23,183 @@
 
   const wmId = new WeakMap();
 
+  /**
+   * @typedef {"user"|"assistant"|"system"|"unknown"} Role
+   * @typedef {{
+   *  id: string,
+   *  name: string,
+   *  conversationRoot: () => Element,
+   *  messageElements: () => Element[],
+   *  roleForMessage: (el: Element) => Role
+   * }} SiteStrategy
+   */
+
+  function uniqueElements(arr) {
+    const out = [];
+    const seen = new Set();
+    for (const el of arr || []) {
+      if (!el || seen.has(el)) continue;
+      seen.add(el);
+      out.push(el);
+    }
+    return out;
+  }
+
+  function isInsideNonConversationArea(el) {
+    if (!el) return false;
+    return !!el.closest("nav, aside, header, footer, [role='navigation'], [role='banner'], [role='contentinfo']");
+  }
+
+  function looksLikeMessageEl(el) {
+    if (!el) return false;
+    if (el.closest?.(`#${EXT_NS}-root`)) return false;
+    if (isInsideNonConversationArea(el)) return false;
+    const t = normalizeText(el.textContent || "");
+    if (t.length < 10) return false;
+    if (t.length > 200000) return false;
+    return true;
+  }
+
+  function filterToLeafCandidates(candidates) {
+    // Keep "leaf" candidates (not container of other candidates) to approximate one element per message.
+    const c = uniqueElements(candidates).filter(looksLikeMessageEl);
+    if (c.length <= 1) return c;
+    const leaf = [];
+    for (const el of c) {
+      let containsOther = false;
+      for (const other of c) {
+        if (el === other) continue;
+        if (el.contains(other)) {
+          containsOther = true;
+          break;
+        }
+      }
+      if (!containsOther) leaf.push(el);
+    }
+    return leaf.length ? leaf : c;
+  }
+
+  function detectRoleByTextHints(el) {
+    const hint = (el.getAttribute?.("aria-label") || "").toLowerCase();
+    const cls = (el.className || "").toString().toLowerCase();
+    const dataRole =
+      (el.getAttribute?.("data-role") || el.getAttribute?.("data-author") || el.getAttribute?.("data-message-role") || "")
+        .toString()
+        .toLowerCase();
+
+    const all = `${hint} ${cls} ${dataRole}`;
+    if (/(^|\b)(user|you|me|my|self|mine)\b/.test(all) || /(^|[^a-z])(我|用户)([^a-z]|$)/.test(all)) return "user";
+    if (/(^|\b)(assistant|bot|ai|chatgpt|deepseek)\b/.test(all) || /(^|[^a-z])(助手)([^a-z]|$)/.test(all))
+      return "assistant";
+    return "unknown";
+  }
+
+  /** @type {SiteStrategy} */
+  const chatgptStrategy = {
+    id: "chatgpt",
+    name: "ChatGPT",
+    conversationRoot: () => {
+      const main = document.querySelector("main");
+      return main || document.body;
+    },
+    messageElements: () => {
+      const turns = Array.from(document.querySelectorAll("article[data-testid^='conversation-turn-']"));
+      if (turns.length > 0) return filterToLeafCandidates(turns);
+
+      const roleNodes = Array.from(document.querySelectorAll("[data-message-author-role]"));
+      if (roleNodes.length > 0) {
+        const wrappers = [];
+        for (const n of roleNodes) {
+          const w = n.closest("article") || n.closest("div");
+          if (w && !wrappers.includes(w)) wrappers.push(w);
+        }
+        return filterToLeafCandidates(wrappers);
+      }
+
+      return filterToLeafCandidates(Array.from(document.querySelectorAll("main article, main section")).slice(0, 400));
+    },
+    roleForMessage: (el) => {
+      const roleEl = el.closest?.("[data-message-author-role]") || el.querySelector?.("[data-message-author-role]");
+      const role = roleEl?.getAttribute?.("data-message-author-role");
+      if (role === "user" || role === "assistant" || role === "system") return role;
+      return detectRoleByTextHints(el);
+    }
+  };
+
+  /** @type {SiteStrategy} */
+  const deepseekStrategy = {
+    id: "deepseek",
+    name: "DeepSeek",
+    conversationRoot: () => {
+      const main = document.querySelector("main");
+      if (main) return main;
+      const app = document.querySelector("#app") || document.querySelector("[id*='app']");
+      return /** @type {Element} */ (app || document.body);
+    },
+    messageElements: () => {
+      const root = deepseekStrategy.conversationRoot();
+      const selectors = [
+        "[data-message-role], [data-author], [data-role*='message']",
+        "[class*='message-item'], [class*='messageItem']",
+        "[class*='chat-message'], [class*='chatMessage']",
+        "article, li, section"
+      ];
+      for (const sel of selectors) {
+        const found = Array.from(root.querySelectorAll(sel));
+        const candidates = filterToLeafCandidates(found);
+        if (candidates.length >= 4) return candidates.slice(0, 600);
+      }
+      // last resort: message-ish blocks
+      const blocks = Array.from(root.querySelectorAll("div")).slice(0, 800);
+      return filterToLeafCandidates(blocks).slice(0, 400);
+    },
+    roleForMessage: (el) => {
+      const attr =
+        (el.getAttribute?.("data-message-role") ||
+          el.getAttribute?.("data-role") ||
+          el.getAttribute?.("data-author") ||
+          "")
+          .toString()
+          .toLowerCase();
+      if (attr === "user" || attr === "human") return "user";
+      if (attr === "assistant" || attr === "bot" || attr === "ai") return "assistant";
+      const near = el.closest?.("[data-message-role],[data-role],[data-author],[class*='message'],[class*='chat']") || el;
+      return detectRoleByTextHints(near);
+    }
+  };
+
+  /** @type {SiteStrategy} */
+  const genericStrategy = {
+    id: "generic",
+    name: "Generic",
+    conversationRoot: () => {
+      const main = document.querySelector("main");
+      return main || document.body;
+    },
+    messageElements: () => {
+      const root = genericStrategy.conversationRoot();
+      const candidates = Array.from(root.querySelectorAll("article, li, section, div"));
+      const scored = candidates
+        .map((el) => ({ el, len: normalizeText(el.textContent || "").length }))
+        .filter((x) => x.len >= 12 && x.len <= 120000)
+        .sort((a, b) => b.len - a.len)
+        .slice(0, 300)
+        .map((x) => x.el);
+      return filterToLeafCandidates(scored).slice(0, 400);
+    },
+    roleForMessage: (el) => detectRoleByTextHints(el)
+  };
+
+  /** @returns {SiteStrategy} */
+  function getSiteStrategy() {
+    const host = (location.host || "").toLowerCase();
+    if (host === "chat.deepseek.com") return deepseekStrategy;
+    if (host === "chatgpt.com" || host === "chat.openai.com") return chatgptStrategy;
+    return genericStrategy;
+  }
+
+  const site = getSiteStrategy();
+
   function hash32(str) {
     // FNV-1a 32bit
     let h = 0x811c9dc5;
@@ -121,11 +298,7 @@
   }
 
   function findConversationRoot() {
-    // Prefer main region
-    const main = document.querySelector("main");
-    if (!main) return document.body;
-    // ChatGPT often renders turns inside main; keep observer scoped.
-    return main;
+    return site.conversationRoot();
   }
 
   function isScrollableElement(el) {
@@ -189,39 +362,11 @@
   }
 
   function detectRoleForMessageEl(el) {
-    // Strategy A: data-message-author-role
-    const roleEl = el.closest?.("[data-message-author-role]") || el.querySelector?.("[data-message-author-role]");
-    const role = roleEl?.getAttribute?.("data-message-author-role");
-    if (role === "user" || role === "assistant" || role === "system") return role;
-
-    // Strategy B: aria labels or headings (weak)
-    const txt = (el.getAttribute?.("aria-label") || "").toLowerCase();
-    if (txt.includes("you") || txt.includes("user")) return "user";
-    if (txt.includes("assistant") || txt.includes("chatgpt")) return "assistant";
-
-    return "unknown";
+    return site.roleForMessage(el);
   }
 
   function findMessageElements() {
-    // ChatGPT variants:
-    // - article[data-testid^="conversation-turn-"] (often)
-    // - div[data-message-author-role] (inner nodes)
-    const turns = Array.from(document.querySelectorAll("article[data-testid^='conversation-turn-']"));
-    if (turns.length > 0) return turns;
-
-    const roleNodes = Array.from(document.querySelectorAll("[data-message-author-role]"));
-    if (roleNodes.length > 0) {
-      // Often roleNodes are inner containers; choose their closest "turn-like" wrapper.
-      const wrappers = [];
-      for (const n of roleNodes) {
-        const w = n.closest("article") || n.closest("div");
-        if (w && !wrappers.includes(w)) wrappers.push(w);
-      }
-      return wrappers;
-    }
-
-    // Last resort: blocks that look like messages
-    return Array.from(document.querySelectorAll("main article, main section")).slice(0, 400);
+    return site.messageElements();
   }
 
   function buildTurns() {

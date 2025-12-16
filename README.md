@@ -2,6 +2,11 @@
 
 给 ChatGPT 这类“长对话流”页面增加一个**目录/搜索/快速跳转**侧边栏，解决“滚动 = 失忆”。
 
+### 支持站点（当前）
+
+- `chatgpt.com` / `chat.openai.com`
+- `chat.deepseek.com`（策略层已接入；如遇到 DOM 结构变动可能需要再微调选择器）
+
 ### 已实现（MVP）
 
 - **目录（Outline）**：默认 Pair（问 + 答），可切换 Turn（每条消息）
