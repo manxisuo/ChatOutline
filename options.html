@@ -8,22 +8,22 @@
   </head>
   <body>
     <main class="wrap">
-      <h1>ChatOutline 设置</h1>
-      <p class="muted">这些设置会同步到浏览器（支持多设备时由浏览器决定）。快捷键：在页面内 <b>Alt + O</b> 打开/关闭目录。</p>
+      <h1 id="i18n-optionsTitle">ChatOutline 设置</h1>
+      <p class="muted" id="i18n-optionsIntro">这些设置会同步到浏览器（支持多设备时由浏览器决定）。快捷键：在页面内 <b>Alt + O</b> 打开/关闭目录。</p>
 
       <section class="card">
         <label class="row">
-          <span>默认展开目录</span>
+          <span id="i18n-optionsOpenByDefault">默认展开目录</span>
           <input id="openByDefault" type="checkbox" />
         </label>
 
         <label class="row">
-          <span>目录宽度（260 - 520）</span>
+          <span id="i18n-optionsWidth">目录宽度（260 - 520）</span>
           <input id="width" type="number" min="260" max="520" step="10" />
         </label>
 
         <label class="row">
-          <span>目录粒度</span>
+          <span id="i18n-optionsGranularity">目录粒度</span>
           <select id="granularity">
             <option value="pair">Pair（问 + 答）</option>
             <option value="turn">Turn（每条消息）</option>
@@ -31,7 +31,7 @@
         </label>
 
         <label class="row">
-          <span>搜索范围</span>
+          <span id="i18n-optionsSearchScope">搜索范围</span>
           <select id="searchScope">
             <option value="preview">预览（默认，快）</option>
             <option value="prefix">前 N 字（折中）</option>
@@ -40,7 +40,7 @@
         </label>
 
         <label class="row" id="prefixLenRow">
-          <span>前 N 字：N（100 - 20000）</span>
+          <span id="i18n-optionsPrefixLength">前 N 字：N（100 - 20000）</span>
           <input id="prefixLength" type="number" min="100" max="20000" step="100" />
         </label>
 
@@ -51,12 +51,12 @@
       </section>
 
       <section class="card">
-        <h2>使用方式</h2>
+        <h2 id="i18n-optionsHowtoTitle">使用方式</h2>
         <ul class="muted">
-          <li>右下角按钮 ≡ 打开目录侧栏</li>
-          <li>目录支持搜索（匹配“提问/回答”的预览文本）</li>
-          <li>点击条目滚动到对应位置，并短暂高亮</li>
-          <li>底部 Back/Forward 是“滚动位置”的前进后退</li>
+          <li id="i18n-optionsHowto1">右下角按钮 ≡ 打开目录侧栏</li>
+          <li id="i18n-optionsHowto2">目录支持搜索（匹配“提问/回答”的预览文本）</li>
+          <li id="i18n-optionsHowto3">点击条目滚动到对应位置，并短暂高亮</li>
+          <li id="i18n-optionsHowto4">底部 Back/Forward 是“滚动位置”的前进后退</li>
         </ul>
       </section>
     </main>

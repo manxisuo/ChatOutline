@@ -1,5 +1,14 @@
 const DEFAULT_SETTINGS = { openByDefault: false, width: 340, granularity: "pair", searchScope: "preview", prefixLength: 800 };
 
+function t(key, substitutions, fallback) {
+  try {
+    const msg = chrome?.i18n?.getMessage?.(key, substitutions);
+    return msg || fallback || key;
+  } catch {
+    return fallback || key;
+  }
+}
+
 function get(keys) {
   return new Promise((resolve) => {
     chrome.storage?.sync?.get(keys, (res) => resolve(res || {}));
@@ -14,6 +23,50 @@ function set(obj) {
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
+}
+
+function applyI18n() {
+  document.title = t("optionsTitle", null, document.title);
+  const map = [
+    ["i18n-optionsTitle", "optionsTitle"],
+    ["i18n-optionsIntro", "optionsIntro"],
+    ["i18n-optionsOpenByDefault", "optionsOpenByDefault"],
+    ["i18n-optionsWidth", "optionsWidth"],
+    ["i18n-optionsGranularity", "optionsGranularity"],
+    ["i18n-optionsSearchScope", "optionsSearchScope"],
+    ["i18n-optionsPrefixLength", "optionsPrefixLength"],
+    ["i18n-optionsHowtoTitle", "optionsHowtoTitle"],
+    ["i18n-optionsHowto1", "optionsHowto1"],
+    ["i18n-optionsHowto2", "optionsHowto2"],
+    ["i18n-optionsHowto3", "optionsHowto3"],
+    ["i18n-optionsHowto4", "optionsHowto4"]
+  ];
+  for (const [id, key] of map) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.textContent = t(key, null, el.textContent);
+  }
+
+  const saveBtn = document.getElementById("save");
+  if (saveBtn) saveBtn.textContent = t("optionsSave", null, saveBtn.textContent);
+
+  const gran = document.getElementById("granularity");
+  if (gran) {
+    const optPair = gran.querySelector("option[value='pair']");
+    const optTurn = gran.querySelector("option[value='turn']");
+    if (optPair) optPair.textContent = t("granularityPair", null, optPair.textContent);
+    if (optTurn) optTurn.textContent = t("granularityTurn", null, optTurn.textContent);
+  }
+
+  const scope = document.getElementById("searchScope");
+  if (scope) {
+    const optPreview = scope.querySelector("option[value='preview']");
+    const optPrefix = scope.querySelector("option[value='prefix']");
+    const optFull = scope.querySelector("option[value='full']");
+    if (optPreview) optPreview.textContent = t("optionsSearchScopePreview", null, optPreview.textContent);
+    if (optPrefix) optPrefix.textContent = t("optionsSearchScopePrefix", null, optPrefix.textContent);
+    if (optFull) optFull.textContent = t("optionsSearchScopeFull", null, optFull.textContent);
+  }
 }
 
 async function load() {
@@ -44,7 +97,7 @@ async function save() {
   await set({ openByDefault, width, granularity, searchScope, prefixLength });
 
   const status = document.getElementById("status");
-  status.textContent = "已保存";
+  status.textContent = t("optionsSaved", null, "Saved");
   window.setTimeout(() => (status.textContent = ""), 1200);
 }
 
@@ -56,6 +109,7 @@ function updatePrefixLenVisibility() {
 
 document.getElementById("save").addEventListener("click", save);
 document.getElementById("searchScope").addEventListener("change", updatePrefixLenVisibility);
+applyI18n();
 load();
 
 

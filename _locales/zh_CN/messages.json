@@ -1,0 +1,69 @@
+{
+  "extName": { "message": "ChatOutline" },
+  "extDescription": { "message": "为长对话页面提供目录/搜索/快速跳转（支持 ChatGPT/DeepSeek/千问/豆包）。" },
+  "actionTitle": { "message": "ChatOutline" },
+
+  "uiTitle": { "message": "ChatOutline" },
+  "uiIndexing": { "message": "正在索引…" },
+  "uiClose": { "message": "关闭" },
+  "uiRefresh": { "message": "刷新" },
+  "uiSearchPreview": { "message": "搜索（预览）" },
+  "uiSearchPrefix": {
+    "message": "搜索（前 $COUNT$ 字）",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "uiSearchFull": { "message": "搜索（全文·实验）" },
+  "uiSummary": {
+    "message": "共 $TOTAL$ 项 · 显示 $SHOWN$ 项",
+    "placeholders": { "total": { "content": "$1" }, "shown": { "content": "$2" } }
+  },
+  "uiProgress": {
+    "message": "当前 $CUR$/$TOTAL$",
+    "placeholders": { "cur": { "content": "$1" }, "total": { "content": "$2" } }
+  },
+  "uiProgressEmpty": {
+    "message": "—/$TOTAL$",
+    "placeholders": { "total": { "content": "$1" } }
+  },
+
+  "granularityPair": { "message": "粒度：Pair（问+答）" },
+  "granularityTurn": { "message": "粒度：Turn（每条消息）" },
+
+  "btnBack": { "message": "Back" },
+  "btnForward": { "message": "Forward" },
+  "btnTop": { "message": "Top" },
+  "btnBottom": { "message": "Bottom" },
+
+  "badgePair": { "message": "Pair" },
+  "badgeCode": { "message": "code" },
+  "badgeImg": { "message": "img" },
+  "badgeImgMulti": {
+    "message": "img×$COUNT$",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+
+  "previewImages": {
+    "message": "图片（$COUNT$ 张）",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+
+  "optionsTitle": { "message": "ChatOutline 设置" },
+  "optionsIntro": { "message": "这些设置会同步到浏览器。快捷键：页面内 Alt + O 打开/关闭目录。" },
+  "optionsOpenByDefault": { "message": "默认展开目录" },
+  "optionsWidth": { "message": "目录宽度（260 - 520）" },
+  "optionsGranularity": { "message": "目录粒度" },
+  "optionsSearchScope": { "message": "搜索范围" },
+  "optionsSearchScopePreview": { "message": "预览（默认，快）" },
+  "optionsSearchScopePrefix": { "message": "前 N 字（折中）" },
+  "optionsSearchScopeFull": { "message": "全文（实验，可能卡）" },
+  "optionsPrefixLength": { "message": "前 N 字：N（100 - 20000）" },
+  "optionsSave": { "message": "保存" },
+  "optionsSaved": { "message": "已保存" },
+  "optionsHowtoTitle": { "message": "使用方式" },
+  "optionsHowto1": { "message": "右下角按钮 ≡ 打开目录侧栏" },
+  "optionsHowto2": { "message": "目录支持搜索（范围在设置页配置）" },
+  "optionsHowto3": { "message": "点击条目滚动到对应位置，并短暂高亮" },
+  "optionsHowto4": { "message": "Back/Forward 是“滚动位置”的前进后退" }
+}
+
+

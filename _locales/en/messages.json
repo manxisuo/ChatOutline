@@ -1,0 +1,69 @@
+{
+  "extName": { "message": "ChatOutline" },
+  "extDescription": { "message": "Adds outline/search/jump navigation for long chat pages (ChatGPT/DeepSeek/Qwen/Doubao)." },
+  "actionTitle": { "message": "ChatOutline" },
+
+  "uiTitle": { "message": "ChatOutline" },
+  "uiIndexing": { "message": "Indexing…" },
+  "uiClose": { "message": "Close" },
+  "uiRefresh": { "message": "Refresh" },
+  "uiSearchPreview": { "message": "Search (preview)" },
+  "uiSearchPrefix": {
+    "message": "Search (first $COUNT$ chars)",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "uiSearchFull": { "message": "Search (full · experimental)" },
+  "uiSummary": {
+    "message": "Total $TOTAL$ · Showing $SHOWN$",
+    "placeholders": { "total": { "content": "$1" }, "shown": { "content": "$2" } }
+  },
+  "uiProgress": {
+    "message": "Now $CUR$/$TOTAL$",
+    "placeholders": { "cur": { "content": "$1" }, "total": { "content": "$2" } }
+  },
+  "uiProgressEmpty": {
+    "message": "—/$TOTAL$",
+    "placeholders": { "total": { "content": "$1" } }
+  },
+
+  "granularityPair": { "message": "Granularity: Pair (Q+A)" },
+  "granularityTurn": { "message": "Granularity: Turn (each message)" },
+
+  "btnBack": { "message": "Back" },
+  "btnForward": { "message": "Forward" },
+  "btnTop": { "message": "Top" },
+  "btnBottom": { "message": "Bottom" },
+
+  "badgePair": { "message": "Pair" },
+  "badgeCode": { "message": "code" },
+  "badgeImg": { "message": "img" },
+  "badgeImgMulti": {
+    "message": "img×$COUNT$",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+
+  "previewImages": {
+    "message": "Images ($COUNT$)",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+
+  "optionsTitle": { "message": "ChatOutline Options" },
+  "optionsIntro": { "message": "These settings sync via browser. Shortcut: Alt + O toggles the outline on supported pages." },
+  "optionsOpenByDefault": { "message": "Open outline by default" },
+  "optionsWidth": { "message": "Outline width (260 - 520)" },
+  "optionsGranularity": { "message": "Granularity" },
+  "optionsSearchScope": { "message": "Search scope" },
+  "optionsSearchScopePreview": { "message": "Preview (default, fast)" },
+  "optionsSearchScopePrefix": { "message": "First N chars (balanced)" },
+  "optionsSearchScopeFull": { "message": "Full text (experimental, may lag)" },
+  "optionsPrefixLength": { "message": "First N chars: N (100 - 20000)" },
+  "optionsSave": { "message": "Save" },
+  "optionsSaved": { "message": "Saved" },
+  "optionsHowtoTitle": { "message": "How to use" },
+  "optionsHowto1": { "message": "Click the ≡ button to open the outline sidebar" },
+  "optionsHowto2": { "message": "Search filters by preview / prefix / full text (configured above)" },
+  "optionsHowto3": { "message": "Click an item to jump and highlight" },
+  "optionsHowto4": { "message": "Back/Forward navigates scroll position history" }
+}
+
+

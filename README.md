@@ -6,6 +6,8 @@
 
 - `chatgpt.com` / `chat.openai.com`
 - `chat.deepseek.com`（策略层已接入；如遇到 DOM 结构变动可能需要再微调选择器）
+- 通义千问 / 千问：`www.qianwen.com`（也预留了 `tongyi.aliyun.com` / `qianwen.aliyun.com` / `www.tongyi.com`）
+- 豆包：`www.doubao.com`
 
 ### 已实现（MVP）
 
@@ -35,11 +37,17 @@
 
 ### 适配策略（当前）
 
-当前主要针对 `chatgpt.com` / `chat.openai.com`，消息识别使用多策略（尽量避免依赖脆弱 class）：
+扩展已实现“站点策略层”（`content.js` 内 `SiteStrategy`），不同站点用不同的消息识别与角色识别策略；整体尽量避免依赖脆弱的 className，但在部分站点仍需要结合 class/属性做权衡。
+
+ChatGPT（`chatgpt.com` / `chat.openai.com`）消息识别使用多策略：
 
 - `article[data-testid^="conversation-turn-"]`（优先）
 - `[data-message-author-role]`（兜底）
 
-后续如果你要适配其他站（Claude / Gemini / 豆包等），建议加“站点策略层”，把 message 识别与 role 识别抽象出来。
+DeepSeek（`chat.deepseek.com`）优先使用 `div.dad65929` + `div[data-um-id]` / `div._4f9bf79` 识别消息。
+
+千问（`www.qianwen.com`）优先使用 `questionItem-*` / `answerItem-*` 识别消息，并从 `bubble-uo23is` / `tongyi-markdown` 抽取文本预览。
+
+豆包（`www.doubao.com`）优先使用 `data-testid="send_message"/"receive_message"` 识别消息，并从 `data-testid="message_text_content"` 抽取文本预览。
 
 

@@ -2,6 +2,15 @@
   const EXT_NS = "chatoutline";
   const DATA_ID = "data-chatoutline-id";
 
+  function t(key, substitutions, fallback) {
+    try {
+      const msg = chrome?.i18n?.getMessage?.(key, substitutions);
+      return msg || fallback || key;
+    } catch {
+      return fallback || key;
+    }
+  }
+
   /** @type {{openByDefault:boolean,width:number,granularity:"pair"|"turn",searchScope:"preview"|"prefix"|"full",prefixLength:number}} */
   const DEFAULT_SETTINGS = { openByDefault: false, width: 340, granularity: "pair", searchScope: "preview", prefixLength: 800 };
 
@@ -55,13 +64,21 @@
     if (el.closest?.(`#${EXT_NS}-root`)) return false;
     if (isInsideNonConversationArea(el)) return false;
     const t = normalizeText(el.textContent || "");
-    // Allow very short messages for DeepSeek (e.g. "飞机", "玻璃") when the wrapper clearly indicates a message.
+    const imgCount = (() => {
+      try {
+        return countMeaningfulImages(el);
+      } catch {
+        return 0;
+      }
+    })();
+
+    // Allow very short / image-only messages for some sites when the wrapper clearly indicates a message.
     if (t.length < 10) {
       try {
         if (
           site?.id === "deepseek" &&
           (el.matches?.("div._9663006[data-um-id], div._4f9bf79") || el.querySelector?.("div.ds-message")) &&
-          t.length >= 1
+          (t.length >= 1 || imgCount > 0)
         ) {
           return true;
         }
@@ -69,7 +86,7 @@
           site?.id === "tongyi" &&
           (el.matches?.("div[class*='questionItem-'], div[class*='answerItem-']") ||
             el.closest?.("div[class*='questionItem-'], div[class*='answerItem-']")) &&
-          t.length >= 1
+          (t.length >= 1 || imgCount > 0)
         ) {
           return true;
         }
@@ -77,7 +94,7 @@
           site?.id === "doubao" &&
           (el.matches?.("[data-testid='send_message'], [data-testid='receive_message']") ||
             el.closest?.("[data-testid='send_message'], [data-testid='receive_message']")) &&
-          t.length >= 1
+          (t.length >= 1 || imgCount > 0)
         ) {
           return true;
         }
@@ -433,7 +450,7 @@
           const imgContent = msg.querySelector?.("[data-testid='message_image_content']");
           if (imgContent) {
             const n = imgContent.querySelectorAll("img").length;
-            return n > 0 ? `图片（${n} 张）` : "图片";
+            return n > 0 ? t("previewImages", [String(n)], `Images (${n})`) : t("badgeImg", null, "img");
           }
           return msg.textContent || "";
         }
@@ -446,6 +463,43 @@
 
   function elHasCode(el) {
     return !!el.querySelector("pre, code");
+  }
+
+  function countMeaningfulImages(el) {
+    // Heuristic: count content images, exclude icons/avatars/svgs.
+    /** @type {HTMLImageElement[]} */
+    const imgs = Array.from(el.querySelectorAll("img"));
+    let count = 0;
+    for (const img of imgs) {
+      try {
+        if (img.closest?.(`#${EXT_NS}-root`)) continue;
+        if (img.closest?.("button, nav, header, footer, [role='navigation'], [role='banner'], [role='contentinfo']")) continue;
+        const src = (img.getAttribute("src") || "").trim();
+        if (!src) continue;
+        if (src.startsWith("data:image/svg")) continue;
+        const cls = (img.className || "").toString().toLowerCase();
+        if (cls.includes("icon") || cls.includes("avatar")) continue;
+
+        // Prefer explicit image containers on some sites
+        if (site?.id === "doubao" && img.closest?.("[data-testid='message_image_content']")) {
+          count++;
+          continue;
+        }
+        if (site?.id === "tongyi" && img.closest?.(".ant-image")) {
+          count++;
+          continue;
+        }
+
+        const wAttr = Number(img.getAttribute("width") || "");
+        const hAttr = Number(img.getAttribute("height") || "");
+        if ((wAttr && wAttr < 40) || (hAttr && hAttr < 40)) continue;
+
+        count++;
+      } catch {
+        // ignore
+      }
+    }
+    return count;
   }
 
   function stableIdFor(el, role, idx, preview) {
@@ -547,16 +601,22 @@
       const role = detectRoleForMessageEl(el);
       const raw = extractRawTextForTurn(el, role);
       const preview = pickPreviewFromText(raw);
-      if (!preview) continue;
+      const imageCount = countMeaningfulImages(el);
+      const hasImage = imageCount > 0;
+      const finalPreview = preview || (hasImage ? t("previewImages", [String(imageCount)], `Images (${imageCount})`) : "");
+      if (!finalPreview) continue;
       const searchText = buildSearchTextFromRaw(raw);
-      const id = stableIdFor(el, role, idx++, preview);
+      const finalSearchText = searchText || (hasImage ? t("previewImages", [String(imageCount)], `Images (${imageCount})`) : "");
+      const id = stableIdFor(el, role, idx++, finalPreview);
       turns.push({
         id,
         role,
         el,
-        preview,
-        searchText,
-        hasCode: elHasCode(el)
+        preview: finalPreview,
+        searchText: finalSearchText,
+        hasCode: elHasCode(el),
+        hasImage,
+        imageCount
       });
     }
     return turns;
@@ -636,17 +696,17 @@
 
     const title = document.createElement("div");
     title.className = "co-title";
-    title.textContent = "ChatOutline";
+    title.textContent = t("uiTitle", null, "ChatOutline");
     const subtitle = document.createElement("div");
     subtitle.className = "co-subtitle";
     subtitle.id = `${EXT_NS}-subtitle`;
-    subtitle.textContent = "正在索引…";
+    subtitle.textContent = t("uiIndexing", null, "Indexing…");
     left.appendChild(title);
     left.appendChild(subtitle);
 
     const closeBtn = document.createElement("button");
     closeBtn.type = "button";
-    closeBtn.textContent = "关闭";
+    closeBtn.textContent = t("uiClose", null, "Close");
     closeBtn.className = "co-select";
 
     titlebar.appendChild(left);
@@ -658,7 +718,7 @@
     search.className = "co-input";
     search.id = `${EXT_NS}-search`;
     search.type = "search";
-    search.placeholder = "搜索";
+    search.placeholder = t("uiSearchPreview", null, "Search (preview)");
 
     row1.appendChild(search);
 
@@ -667,13 +727,18 @@
     const gran = document.createElement("select");
     gran.className = "co-select";
     gran.id = `${EXT_NS}-granularity`;
-    gran.innerHTML = `
-      <option value="pair">粒度：Pair（问+答）</option>
-      <option value="turn">粒度：Turn（每条消息）</option>
-    `;
+    gran.textContent = "";
+    const optPair = document.createElement("option");
+    optPair.value = "pair";
+    optPair.textContent = t("granularityPair", null, "Granularity: Pair (Q+A)");
+    const optTurn = document.createElement("option");
+    optTurn.value = "turn";
+    optTurn.textContent = t("granularityTurn", null, "Granularity: Turn (each message)");
+    gran.appendChild(optPair);
+    gran.appendChild(optTurn);
     const refresh = document.createElement("button");
     refresh.type = "button";
-    refresh.textContent = "刷新";
+    refresh.textContent = t("uiRefresh", null, "Refresh");
     refresh.className = "co-select";
     row2.appendChild(gran);
     row2.appendChild(refresh);
@@ -696,16 +761,16 @@
     actions.className = "co-actions";
     const backBtn = document.createElement("button");
     backBtn.type = "button";
-    backBtn.textContent = "Back";
+    backBtn.textContent = t("btnBack", null, "Back");
     const forwardBtn = document.createElement("button");
     forwardBtn.type = "button";
-    forwardBtn.textContent = "Forward";
+    forwardBtn.textContent = t("btnForward", null, "Forward");
     const topBtn = document.createElement("button");
     topBtn.type = "button";
-    topBtn.textContent = "Top";
+    topBtn.textContent = t("btnTop", null, "Top");
     const bottomBtn = document.createElement("button");
     bottomBtn.type = "button";
-    bottomBtn.textContent = "Bottom";
+    bottomBtn.textContent = t("btnBottom", null, "Bottom");
     actions.appendChild(backBtn);
     actions.appendChild(forwardBtn);
     actions.appendChild(topBtn);
@@ -756,15 +821,15 @@
     if (!input) return;
     const scope = state.settings.searchScope;
     if (scope === "full") {
-      input.placeholder = "搜索（全文·实验）";
+      input.placeholder = t("uiSearchFull", null, "Search (full · experimental)");
       return;
     }
     if (scope === "prefix") {
       const n = clamp(state.settings.prefixLength || 0, 100, 20000);
-      input.placeholder = `搜索（前 ${n} 字）`;
+      input.placeholder = t("uiSearchPrefix", [String(n)], `Search (first ${n} chars)`);
       return;
     }
-    input.placeholder = "搜索（预览）";
+    input.placeholder = t("uiSearchPreview", null, "Search (preview)");
   }
 
   function setOpen(open, persist) {
@@ -863,8 +928,11 @@
       : items.slice();
 
     subtitle.textContent = `共 ${items.length} 项 · 显示 ${filtered.length} 项`;
+    subtitle.textContent = t("uiSummary", [String(items.length), String(filtered.length)], subtitle.textContent);
     progress.textContent =
-      state.activeIndex >= 0 ? `当前 ${state.activeIndex + 1}/${items.length}` : `—/${items.length}`;
+      state.activeIndex >= 0
+        ? t("uiProgress", [String(state.activeIndex + 1), String(items.length)], `Now ${state.activeIndex + 1}/${items.length}`)
+        : t("uiProgressEmpty", [String(items.length)], `—/${items.length}`);
 
     list.textContent = "";
     for (const it of filtered) {
@@ -885,12 +953,21 @@
       badges.className = "co-badges";
       const badgeRole = document.createElement("div");
       badgeRole.className = "co-badge";
-      badgeRole.textContent = it.kind === "turn" ? it.role : "Pair";
+      badgeRole.textContent = it.kind === "turn" ? it.role : t("badgePair", null, "Pair");
       badges.appendChild(badgeRole);
       if (it.hasCode) {
         const b = document.createElement("div");
         b.className = "co-badge";
-        b.textContent = "code";
+        b.textContent = t("badgeCode", null, "code");
+        badges.appendChild(b);
+      }
+      if (it.imageCount && it.imageCount > 0) {
+        const b = document.createElement("div");
+        b.className = "co-badge";
+        b.textContent =
+          it.imageCount > 1
+            ? t("badgeImgMulti", [String(it.imageCount)], `img×${it.imageCount}`)
+            : t("badgeImg", null, "img");
         badges.appendChild(b);
       }
 
@@ -925,6 +1002,8 @@
         preview: t.preview,
         searchText: t.searchText || t.preview,
         hasCode: t.hasCode,
+        hasImage: !!t.hasImage,
+        imageCount: t.imageCount || 0,
         targetEl: t.el
       }));
     } else {
@@ -937,6 +1016,8 @@
         preview: p.preview,
         searchText: ((p.user?.searchText || "") + "\n" + (p.assistant?.searchText || "")).trim() || p.preview,
         hasCode: p.hasCode,
+        hasImage: !!(p.user?.hasImage || p.assistant?.hasImage),
+        imageCount: (p.user?.imageCount || 0) + (p.assistant?.imageCount || 0),
         targetEl: p.targetEl
       }));
     }
