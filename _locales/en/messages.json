@@ -7,6 +7,7 @@
   "uiIndexing": { "message": "Indexing…" },
   "uiClose": { "message": "Close" },
   "uiRefresh": { "message": "Refresh" },
+  "uiOptions": { "message": "Options" },
   "uiSearchPreview": { "message": "Search (preview)" },
   "uiSearchPrefix": {
     "message": "Search (first $COUNT$ chars)",
@@ -35,6 +36,10 @@
   "btnBottom": { "message": "Bottom" },
 
   "badgePair": { "message": "Pair" },
+  "roleUser": { "message": "user" },
+  "roleAssistant": { "message": "assistant" },
+  "roleSystem": { "message": "system" },
+  "roleUnknown": { "message": "unknown" },
   "badgeCode": { "message": "code" },
   "badgeImg": { "message": "img" },
   "badgeImgMulti": {

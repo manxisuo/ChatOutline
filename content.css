@@ -125,6 +125,24 @@
   color-scheme: dark;
 }
 
+.co-icon-btn {
+  height: 30px;
+  width: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid var(--co-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--co-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.co-icon-btn:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
 /* Windows/Chrome: dropdown option list often uses OS colors; force dark options for readability */
 .co-select option {
   background-color: #111;

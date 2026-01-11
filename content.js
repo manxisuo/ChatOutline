@@ -701,13 +701,29 @@
     left.appendChild(title);
     left.appendChild(subtitle);
 
+    const rightBtns = document.createElement("div");
+    rightBtns.style.display = "flex";
+    rightBtns.style.alignItems = "center";
+    rightBtns.style.gap = "8px";
+
+    const optionsBtn = document.createElement("button");
+    optionsBtn.type = "button";
+    optionsBtn.textContent = "⚙";
+    optionsBtn.className = "co-icon-btn";
+    optionsBtn.title = t("uiOptions", null, "Options");
+    optionsBtn.setAttribute("aria-label", t("uiOptions", null, "Options"));
+
     const closeBtn = document.createElement("button");
     closeBtn.type = "button";
-    closeBtn.textContent = t("uiClose", null, "Close");
-    closeBtn.className = "co-select";
+    closeBtn.textContent = "✕";
+    closeBtn.className = "co-icon-btn";
+    closeBtn.title = t("uiClose", null, "Close");
+    closeBtn.setAttribute("aria-label", t("uiClose", null, "Close"));
 
     titlebar.appendChild(left);
-    titlebar.appendChild(closeBtn);
+    rightBtns.appendChild(optionsBtn);
+    rightBtns.appendChild(closeBtn);
+    titlebar.appendChild(rightBtns);
 
     const row1 = document.createElement("div");
     row1.className = "co-row";
@@ -787,6 +803,22 @@
     // Events
     fab.addEventListener("click", () => setOpen(!state.open, true));
     closeBtn.addEventListener("click", () => setOpen(false, true));
+    optionsBtn.addEventListener("click", () => {
+      // Most reliable in MV3: ask background service worker to open options page.
+      try {
+        chrome.runtime?.sendMessage?.({ type: "CO_OPEN_OPTIONS" });
+        return;
+      } catch {
+        // ignore
+      }
+      // Fallback: open directly (should work under user gesture)
+      try {
+        const url = chrome.runtime?.getURL?.("options.html") || "options.html";
+        window.open(url, "_blank", "noopener,noreferrer");
+      } catch {
+        // ignore
+      }
+    });
     refresh.addEventListener("click", () => scheduleRebuild(0));
     search.addEventListener("input", () => renderList());
     gran.addEventListener("change", async () => {
@@ -924,8 +956,11 @@
       ? items.filter((it) => (it.searchText || it.preview || "").toLowerCase().includes(q))
       : items.slice();
 
-    subtitle.textContent = `共 ${items.length} 项 · 显示 ${filtered.length} 项`;
-    subtitle.textContent = t("uiSummary", [String(items.length), String(filtered.length)], subtitle.textContent);
+    subtitle.textContent = t(
+      "uiSummary",
+      [String(items.length), String(filtered.length)],
+      `Total ${items.length} · Showing ${filtered.length}`
+    );
     progress.textContent =
       state.activeIndex >= 0
         ? t("uiProgress", [String(state.activeIndex + 1), String(items.length)], `Now ${state.activeIndex + 1}/${items.length}`)
@@ -950,7 +985,19 @@
       badges.className = "co-badges";
       const badgeRole = document.createElement("div");
       badgeRole.className = "co-badge";
-      badgeRole.textContent = it.kind === "turn" ? it.role : t("badgePair", null, "Pair");
+      if (it.kind === "turn") {
+        const roleKey =
+          it.role === "user"
+            ? "roleUser"
+            : it.role === "assistant"
+              ? "roleAssistant"
+              : it.role === "system"
+                ? "roleSystem"
+                : "roleUnknown";
+        badgeRole.textContent = t(roleKey, null, it.role || "unknown");
+      } else {
+        badgeRole.textContent = t("badgePair", null, "Pair");
+      }
       badges.appendChild(badgeRole);
       if (it.hasCode) {
         const b = document.createElement("div");
@@ -1062,7 +1109,13 @@
     const progress = document.getElementById(`${EXT_NS}-progress`);
     if (progress) {
       progress.textContent =
-        state.activeIndex >= 0 ? `当前 ${state.activeIndex + 1}/${state.items.length}` : `—/${state.items.length}`;
+        state.activeIndex >= 0
+          ? t(
+              "uiProgress",
+              [String(state.activeIndex + 1), String(state.items.length)],
+              `Now ${state.activeIndex + 1}/${state.items.length}`
+            )
+          : t("uiProgressEmpty", [String(state.items.length)], `—/${state.items.length}`);
     }
     if (!list) return;
     // Update only visible nodes: cheap pass

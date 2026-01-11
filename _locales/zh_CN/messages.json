@@ -7,6 +7,7 @@
   "uiIndexing": { "message": "正在索引…" },
   "uiClose": { "message": "关闭" },
   "uiRefresh": { "message": "刷新" },
+  "uiOptions": { "message": "设置" },
   "uiSearchPreview": { "message": "搜索（预览）" },
   "uiSearchPrefix": {
     "message": "搜索（前 $COUNT$ 字）",
@@ -26,19 +27,23 @@
     "placeholders": { "total": { "content": "$1" } }
   },
 
-  "granularityPair": { "message": "粒度：Pair（问+答）" },
-  "granularityTurn": { "message": "粒度：Turn（每条消息）" },
+  "granularityPair": { "message": "粒度：问答（问+答）" },
+  "granularityTurn": { "message": "粒度：单条（每条消息）" },
 
-  "btnBack": { "message": "Back" },
-  "btnForward": { "message": "Forward" },
-  "btnTop": { "message": "Top" },
-  "btnBottom": { "message": "Bottom" },
+  "btnBack": { "message": "后退" },
+  "btnForward": { "message": "前进" },
+  "btnTop": { "message": "顶部" },
+  "btnBottom": { "message": "底部" },
 
-  "badgePair": { "message": "Pair" },
-  "badgeCode": { "message": "code" },
-  "badgeImg": { "message": "img" },
+  "badgePair": { "message": "问答" },
+  "roleUser": { "message": "用户" },
+  "roleAssistant": { "message": "助手" },
+  "roleSystem": { "message": "系统" },
+  "roleUnknown": { "message": "未知" },
+  "badgeCode": { "message": "代码" },
+  "badgeImg": { "message": "图片" },
   "badgeImgMulti": {
-    "message": "img×$COUNT$",
+    "message": "图×$COUNT$",
     "placeholders": { "count": { "content": "$1" } }
   },
 
@@ -63,7 +68,7 @@
   "optionsHowto1": { "message": "右下角按钮 ≡ 打开目录侧栏" },
   "optionsHowto2": { "message": "目录支持搜索（范围在设置页配置）" },
   "optionsHowto3": { "message": "点击条目滚动到对应位置，并短暂高亮" },
-  "optionsHowto4": { "message": "Back/Forward 是“滚动位置”的前进后退" }
+  "optionsHowto4": { "message": "后退/前进 是“滚动位置”的前进后退" }
 }
 
 
