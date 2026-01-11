@@ -1,5 +1,5 @@
 {
-  "extName": { "message": "ChatOutline" },
+  "extName": { "message": "长对话导航(ChatOutline)" },
   "extDescription": { "message": "为长对话页面提供目录/搜索/快速跳转（支持 ChatGPT/DeepSeek/千问/豆包）。" },
   "actionTitle": { "message": "ChatOutline" },
 

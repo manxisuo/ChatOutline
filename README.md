@@ -4,9 +4,9 @@
 
 ### 支持站点（当前）
 
-- `chatgpt.com` / `chat.openai.com`
+- `chatgpt.com`
 - `chat.deepseek.com`（策略层已接入；如遇到 DOM 结构变动可能需要再微调选择器）
-- 通义千问 / 千问：`www.qianwen.com`（也预留了 `tongyi.aliyun.com` / `qianwen.aliyun.com` / `www.tongyi.com`）
+- 通义千问 / 千问：`www.qianwen.com`
 - 豆包：`www.doubao.com`
 
 ### 已实现（MVP）
@@ -39,7 +39,7 @@
 
 扩展已实现“站点策略层”（`content.js` 内 `SiteStrategy`），不同站点用不同的消息识别与角色识别策略；整体尽量避免依赖脆弱的 className，但在部分站点仍需要结合 class/属性做权衡。
 
-ChatGPT（`chatgpt.com` / `chat.openai.com`）消息识别使用多策略：
+ChatGPT（`chatgpt.com`）消息识别使用多策略：
 
 - `article[data-testid^="conversation-turn-"]`（优先）
 - `[data-message-author-role]`（兜底）

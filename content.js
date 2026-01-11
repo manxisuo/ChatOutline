@@ -316,14 +316,11 @@
     const host = (location.host || "").toLowerCase();
     if (host === "chat.deepseek.com") return deepseekStrategy;
     if (
-      host === "tongyi.aliyun.com" ||
-      host === "qianwen.aliyun.com" ||
-      host === "www.tongyi.com" ||
       host === "www.qianwen.com"
     )
       return tongyiStrategy;
     if (host === "www.doubao.com") return doubaoStrategy;
-    if (host === "chatgpt.com" || host === "chat.openai.com") return chatgptStrategy;
+    if (host === "chatgpt.com") return chatgptStrategy;
     return genericStrategy;
   }
 
